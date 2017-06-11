@@ -136,6 +136,8 @@ void My_Init()
 	freeShaderSource(fragmentShaderSource);
 	glCompileShader(vertexShader);
 	glCompileShader(fragmentShader);
+	shaderLog(vertexShader);
+	shaderLog(fragmentShader);
 	glAttachShader(program, vertexShader);
 	glAttachShader(program, fragmentShader);
 	glLinkProgram(program);
