@@ -1,4 +1,8 @@
-#include "../Externals/Include/Include.h"
+#include "common.h"
+#include "openGLrelated.h"
+
+using namespace glm;
+using namespace std;
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
@@ -14,9 +18,17 @@ float startY = 0;
 GLint program;
 GLint mv_location;
 GLint proj_location;
-glm::mat4 proj_matrix;
-glm::mat4 mv_matrix[8];
-glm::mat4 ch_matrix;
+mat4 view;
+mat4 proj_matrix;
+mat4 ch_matrix;
+mat4 mv_matrix[8];
+
+int xpre;
+int ypre;
+vec3 eye;
+vec3 center;
+vec3 up;
+vec3 direction;
 
 
 const aiScene *scene0 = aiImportFile("city.obj", aiProcessPreset_TargetRealtime_MaxQuality);//background
@@ -256,10 +268,9 @@ void My_Init()
 		mv_location = glGetUniformLocation(program, "um4mv");
 
 		proj_location = glGetUniformLocation(program, "um4p");
-		proj_matrix = glm::perspective((float)deg2rad(50.0f), 1.0f, 0.1f, 100000.0f);
 		glm::mat4 Identy_Init(1.0);
 		ch_matrix = Identy_Init;
-		if(s>0)
+		if (s>0)
 			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(-20.0f + 10 * s, -26.0f, -75.0f));
 		else
 			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(5.0f + 10 * s, -30.0f, -75.0f));
@@ -276,10 +287,8 @@ void My_Display()
 	GLuint tex_location = glGetUniformLocation(program, "tex");
 	glUniform1i(tex_location, 0);
 	for (int s = 0; s < 8; s++) {
-		mv_matrix[s] = mv_matrix[s]*glm::rotate(m, (float)deg2rad(angleX / 25), glm::vec3(0.0f, 1.0f, 0.0f));
-		mv_matrix[s] = mv_matrix[s]*glm::rotate(m, (float)deg2rad(angleY / 25), glm::vec3(1.0f, 0.0f, 0.0f));
-		mv_matrix[s] = ch_matrix*mv_matrix[s];
-		glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(mv_matrix[s]));
+		view = lookAt(eye, eye + direction, up);		
+		glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
 		glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
 		glActiveTexture(GL_TEXTURE0);
 		const aiScene *scene;
@@ -316,84 +325,19 @@ void My_Display()
 void My_Reshape(int width, int height)
 {
 	glViewport(0, 0, width, height);
+	float viewportAspect = (float)width / (float)height;
+	proj_matrix = perspective(radians(60.0f), viewportAspect, 0.1f, 10000.0f);
+	//initial position
+	eye = vec3(20.0f, 2.0f, 0.0f);
+	direction = vec3(0.0f, 0.0f, -5.0f);
+	center = eye + direction;
+	up = vec3(0.0f, 1.0f, 0.0f);
 }
 
 void My_Timer(int val)
 {
 	glutPostRedisplay();
 	glutTimerFunc(timer_speed, My_Timer, val);
-}
-
-void My_Mouse(int button, int state, int x, int y)
-{
-	if(state == GLUT_DOWN)
-	{
-		printf("Mouse %d is pressed at (%d, %d)\n", button, x, y);
-		startX = x;
-		startY = y;
-	}
-	else if(state == GLUT_UP)
-	{
-		printf("Mouse %d is released at (%d, %d)\n", button, x, y);
-	}
-}
-
-void My_Motion(int x, int y)
-{
-	printf("%d %d\n", x, y);
-	angleX = x - startX;
-	angleY = y - startY;
-	startX = x;
-	startY = y;
-	glutPostRedisplay();
-}
-
-void My_Keyboard(unsigned char key, int x, int y)
-{
-	glm::mat4 Identy_Init(1.0);
-	switch (key)
-	{
-	case 'A':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(1.0f, 0.0f, 0.0f));
-		break;
-	case 'a':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(1.0f, 0.0f, 0.0f));
-		break;
-	case 'D':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(-1.0f, 0.0f, 0.0f));
-		break;
-	case 'd':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(-1.0f, 0.0f, 0.0f));
-		break;
-	case 'S':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, 0.0f, -1.0f));
-		break;
-	case 's':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, 0.0f, -1.0f));
-		break;
-	case 'W':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, 0.0f, 1.0f));
-		break;
-	case 'w':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, 0.0f, 1.0f));
-		break;
-	case 'Z':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, 1.0f, 0.0f));
-		break;
-	case 'z':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, 1.0f, 0.0f));
-		break;
-	case 'X':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, -1.0f, 0.0f));
-		break;
-	case 'x':
-		ch_matrix = glm::translate(Identy_Init, glm::vec3(0.0f, -1.0f, 0.0f));
-		break;
-	default:
-		break;
-	}
-	printf("Key %c is pressed at (%d, %d)\n", key, x, y);
-	glutPostRedisplay();
 }
 
 void My_SpecialKeys(int key, int x, int y)
@@ -479,10 +423,10 @@ int main(int argc, char *argv[])
 	glutDisplayFunc(My_Display);
 	glutReshapeFunc(My_Reshape);
 	glutMouseFunc(My_Mouse);
-	glutMotionFunc(My_Motion);
+	glutMotionFunc(MotionMouse);
 	glutKeyboardFunc(My_Keyboard);
 	glutSpecialFunc(My_SpecialKeys);
-	//glutTimerFunc(timer_speed, My_Timer, 0); 
+	glutTimerFunc(timer_speed, My_Timer, 0); 
 
 	// Enter main event loop.
 	glutMainLoop();
