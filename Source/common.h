@@ -4,6 +4,7 @@ using namespace std;
 
 extern int xpre;
 extern int ypre;
+extern int pokemon;
 extern vec3 eye;
 extern vec3 center;
 extern vec3 up;

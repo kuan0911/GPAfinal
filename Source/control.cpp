@@ -35,6 +35,34 @@ void My_Keyboard(unsigned char key, int x, int y)
 		direction = vec3(-5.0f, 0.0f, 0.0f);
 		up = vec3(0.0f, 1.0f, 0.0f);
 	}
+	else if (key == '1')
+	{
+		pokemon = 1;
+	}
+	else if (key == '2')
+	{
+		pokemon = 2;
+	}
+	else if (key == '3')
+	{
+		pokemon = 3;
+	}
+	else if (key == '4')
+	{
+		pokemon = 4;
+	}
+	else if (key == '5')
+	{
+		pokemon = 5;
+	}
+	else if (key == '6')
+	{
+		pokemon = 6;
+	}
+	else if (key == '7')
+	{
+		pokemon = 7;
+	}
 }
 
 void My_Mouse(int button, int state, int x, int y)
