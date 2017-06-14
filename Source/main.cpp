@@ -1,8 +1,20 @@
 #include "common.h"
 #include "openGLrelated.h"
+#include <stdio.h>
+#include "../Externals/Include/irrKlang/irrKlang.h"
+
+// include console I/O methods (conio.h for windows, our wrapper in linux)
+#if defined(WIN32)
+#include <conio.h>
+#else
+#include "../common/conio.h"
+#endif
 
 using namespace glm;
 using namespace std;
+using namespace irrklang;
+
+#pragma comment(lib, "irrKlang.lib") // link with irrKlang.dll
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
@@ -37,19 +49,18 @@ vec3 eye;
 vec3 center;
 vec3 up;
 vec3 direction;
-
+// start the sound engine with default parameters
+irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 
 const aiScene *scene0 = aiImportFile("city.obj", aiProcessPreset_TargetRealtime_MaxQuality);//background
-const aiScene *scene1 = aiImportFile("Fushigidane.obj", aiProcessPreset_TargetRealtime_MaxQuality);//¦a¹«
-const aiScene *scene2 = aiImportFile("Digda.obj", aiProcessPreset_TargetRealtime_MaxQuality);//§®µìºØ¤l
+const aiScene *scene1 = aiImportFile("Fushigidane.obj", aiProcessPreset_TargetRealtime_MaxQuality);//§®µìºØ¤l
+const aiScene *scene2 = aiImportFile("Digda.obj", aiProcessPreset_TargetRealtime_MaxQuality);//¦a¹«
 const aiScene *scene3 = aiImportFile("Golonya.obj", aiProcessPreset_TargetRealtime_MaxQuality);//¥ÛÀY©Ç
 const aiScene *scene4 = aiImportFile("Hitokage.obj", aiProcessPreset_TargetRealtime_MaxQuality);//¤p¤õÀs
 const aiScene *scene5 = aiImportFile("Mew.obj", aiProcessPreset_TargetRealtime_MaxQuality);
 const aiScene *scene6 = aiImportFile("Nyarth.obj", aiProcessPreset_TargetRealtime_MaxQuality);//ØpØp
 const aiScene *scene7 = aiImportFile("Zenigame.obj", aiProcessPreset_TargetRealtime_MaxQuality);//³Ç¥§Àt
 
-using namespace glm;
-using namespace std;
 
 static inline float random_float()
 {
@@ -418,8 +429,7 @@ void My_Display()
 		glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 
-	//angleX = 0;
-	//angleY = 0;
+
 
 	//for point sprite
 	glUniform1i(type_Loc, 1);
@@ -517,8 +527,17 @@ int main(int argc, char *argv[])
 #ifdef _MSC_VER
 	glewInit();
 #endif
+
 	glPrintContextInfo();
 	My_Init();
+
+	if (!engine)
+	{
+		printf("Could not startup engine\n");
+		return 0; // error starting up the engine
+	}
+	// play some sound stream, looped
+	engine->play3D("../Assets/media/BGM_Pokemon.ogg", vec3df(0, 0, 0), true, false, true);
 
 	// Create a menu and bind it to mouse right button.
 	int menu_main = glutCreateMenu(My_Menu);
@@ -547,5 +566,6 @@ int main(int argc, char *argv[])
 	// Enter main event loop.
 	glutMainLoop();
 
+	engine->drop(); // delete engine
 	return 0;
 }

@@ -1,9 +1,14 @@
 #include "common.h"
+#include "../Externals/Include/irrKlang/irrKlang.h"
 using namespace glm;
 using namespace std;
-
+using namespace irrklang;
+#pragma comment(lib, "irrKlang.lib") // link with irrKlang.dll
 void My_Keyboard(unsigned char key, int x, int y)
 {
+	// start the sound engine with default parameters
+	irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
+
 	printf("Key %c is pressed at (%d, %d)\n", key, x, y);
 	if (key == 'd')
 	{
@@ -38,30 +43,37 @@ void My_Keyboard(unsigned char key, int x, int y)
 	else if (key == '1')
 	{
 		pokemon = 1;
+		engine->play3D("../Assets/media/Fushigidane_voice.wav", vec3df(0, 0, 0));
 	}
 	else if (key == '2')
 	{
 		pokemon = 2;
+		engine->play3D("../Assets/media/Digda_voice.wav", vec3df(0, 0, 0));
 	}
 	else if (key == '3')
 	{
 		pokemon = 3;
+		engine->play3D("../Assets/media/Golonya_voice.wav", vec3df(0, 0, 0));
 	}
 	else if (key == '4')
 	{
 		pokemon = 4;
+		engine->play3D("../Assets/media/Hitokage_voice.wav", vec3df(0, 0, 0));
 	}
 	else if (key == '5')
 	{
 		pokemon = 5;
+		engine->play3D("../Assets/media/Mew_voice.wav", vec3df(0, 0, 0));
 	}
 	else if (key == '6')
 	{
 		pokemon = 6;
+		engine->play3D("../Assets/media/Nyarth_voice.wav", vec3df(0, 0, 0));
 	}
 	else if (key == '7')
 	{
 		pokemon = 7;
+		engine->play3D("../Assets/media/Zenigame_voice.wav", vec3df(0, 0, 0));
 	}
 }
 
