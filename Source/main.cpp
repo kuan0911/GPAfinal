@@ -36,6 +36,8 @@ mat4 view;
 mat4 proj_matrix;
 mat4 ch_matrix;
 mat4 mv_matrix[8];
+mat4 sun_mv_matrix;
+vec3 light_pos;
 
 //for point sprite
 GLuint vao;
@@ -60,6 +62,7 @@ const aiScene *scene4 = aiImportFile("Hitokage.obj", aiProcessPreset_TargetRealt
 const aiScene *scene5 = aiImportFile("Mew.obj", aiProcessPreset_TargetRealtime_MaxQuality);
 const aiScene *scene6 = aiImportFile("Nyarth.obj", aiProcessPreset_TargetRealtime_MaxQuality);//ÿpÿp
 const aiScene *scene7 = aiImportFile("Zenigame.obj", aiProcessPreset_TargetRealtime_MaxQuality);//≥«•ß¿t
+const aiScene *scene8 = aiImportFile("globe-sphere.obj", aiProcessPreset_TargetRealtime_MaxQuality);//§”∂ß
 
 
 static inline float random_float()
@@ -192,9 +195,9 @@ void My_Init()
 	glAttachShader(program, vertexShader);
 	glAttachShader(program, fragmentShader);
 	glLinkProgram(program);
-	materials = new Material*[7];
-	shapes = new Shape*[7];
-	for (int s = 0; s < 8; s++) {
+	materials = new Material*[8];
+	shapes = new Shape*[8];
+	for (int s = 0; s < 9; s++) {
 		const aiScene *scene;
 		if (s == 0)
 			scene = scene0;
@@ -212,6 +215,8 @@ void My_Init()
 			scene = scene6;
 		else if (s == 7)
 			scene = scene7;
+		else if (s == 8)
+			scene = scene8;
 		if (glGenerateMipmap == NULL)
 			cout << "error no minmap" << endl;
 		materials[s] = new Material[scene->mNumMaterials];
@@ -309,10 +314,8 @@ void My_Init()
 		proj_location = glGetUniformLocation(program, "um4p");
 		glm::mat4 Identy_Init(1.0);
 		ch_matrix = Identy_Init;
-		if (s>0)
-			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(-20.0f + 10 * s, -26.0f, -75.0f));
-		else
-			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(5.0f + 10 * s, -30.0f, -75.0f));
+		if (s > 0 & s < 8)
+			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(-25.0f + 10 * s, 4.0f, 0.0f));
 	}
 
 	//for point sprite
@@ -379,13 +382,14 @@ void My_Display()
 	GLuint tex_location = glGetUniformLocation(program, "tex");
 	GLint time_Loc = glGetUniformLocation(program, "time");
 	GLint type_Loc = glGetUniformLocation(program, "type");
+	GLint light_pos_location = glGetUniformLocation(program, "light_pos");
 	glUniform1f(time_Loc, currentTime);
 	glUniform1i(tex_location, 0);
 
 	//background
 	glUniform1i(type_Loc, 0);
 	view = lookAt(eye, eye + direction, up);
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*mv_matrix[0]));
+	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view));
 	glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
 	glActiveTexture(GL_TEXTURE0);
 	const aiScene *scene;
@@ -399,7 +403,7 @@ void My_Display()
 		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 
-	//pokemon
+	//pokemon	
 	int s = pokemon;
 	glUniform1i(type_Loc, 0);
 	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
@@ -429,6 +433,24 @@ void My_Display()
 		glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 
+	//sun
+	light_pos = vec3(1400 * cos(f_timer_cnt* 0.0001f), 1400 * sin(f_timer_cnt* 0.0001f), 0.0);
+	glUniform1i(type_Loc, 0);
+	glUniform3fv(light_pos_location, 1, value_ptr(light_pos));	
+	sun_mv_matrix = glm::translate(mat4(1.0f), light_pos);
+	sun_mv_matrix = glm::scale(sun_mv_matrix, glm::vec3(50.0f));
+	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*sun_mv_matrix));
+	glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
+	//glActiveTexture(GL_TEXTURE0);	
+	scene = scene8;
+	for (int l = 0; l< int(scene->mNumMeshes); ++l)
+	{
+		glBindVertexArray(shapes[8][l].vao);
+		int materialID = shapes[8][l].materialID;
+		glBindTexture(GL_TEXTURE_2D, materials[s][materialID].diffuse_tex);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[8][l].ibo);
+		glDrawElements(GL_TRIANGLES, shapes[8][l].drawCount, GL_UNSIGNED_INT, 0);
+	}
 
 
 	//for point sprite
@@ -454,7 +476,7 @@ void My_Reshape(int width, int height)
 	float viewportAspect = (float)width / (float)height;
 	proj_matrix = perspective(radians(60.0f), viewportAspect, 0.1f, 10000.0f);
 	//initial position
-	eye = vec3(20.0f, 2.0f, 0.0f);
+	eye = vec3(15.0f, 32.0f, 75.0f);
 	direction = vec3(0.0f, 0.0f, -5.0f);
 	center = eye + direction;
 	up = vec3(0.0f, 1.0f, 0.0f);
