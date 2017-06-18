@@ -36,7 +36,7 @@ void My_Keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'r')
 	{
-		eye = vec3(0.0f, 2.0f, 0.0f);
+		eye = vec3(0.0f, 200.0f, 0.0f);
 		direction = vec3(-5.0f, 0.0f, 0.0f);
 		up = vec3(0.0f, 1.0f, 0.0f);
 	}

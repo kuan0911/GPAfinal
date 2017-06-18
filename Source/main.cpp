@@ -13,6 +13,7 @@
 using namespace glm;
 using namespace std;
 using namespace irrklang;
+#define SHADOW_MAP_SIZE 4096
 
 #pragma comment(lib, "irrKlang.lib") // link with irrKlang.dll
 
@@ -30,6 +31,9 @@ float startX = 0;
 float angleY = 0;
 float startY = 0;
 GLint program;
+GLint blinnPhongProg;
+GLint depthProg;
+GLint particleProg;
 GLint mv_location;
 GLint proj_location;
 mat4 view;
@@ -38,6 +42,41 @@ mat4 ch_matrix;
 mat4 mv_matrix[8];
 mat4 sun_mv_matrix;
 vec3 light_pos;
+GLint light_pos_location;
+
+struct
+{
+	struct
+	{
+		GLint   mvp;
+	} light;
+	struct
+	{
+		GLuint  shadow_tex_location;
+		GLint   mv_matrix_location;
+		GLint   proj_matrix_location;
+		GLint   shadow_matrix_location;
+		GLint   full_shading_location;
+		GLint   light_matrix_location;
+	} view;
+} uniforms;
+GLint   mv_matrix_normal_location;
+GLint   proj_matrix_normal_location;
+GLint   mv_matrix_particle_location;
+GLint   proj_matrix_particle_location;
+
+struct
+{
+	GLuint fbo;
+	GLuint depthMap;
+} shadowBuffer;
+
+struct
+{
+	int width;
+	int height;
+} viewportSize;
+
 
 //for point sprite
 GLuint vao;
@@ -179,7 +218,33 @@ TextureData loadPNG(const char* const pngFilepath)
 
 void My_Init()
 {
-	program = glCreateProgram();
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glClearColor(0.5, 0.5, 0.5, 1.0);
+
+	// ----- Begin Initialize Depth Shader Program -----
+	depthProg = glCreateProgram();
+	GLuint shadow_vs = glCreateShader(GL_VERTEX_SHADER);
+	GLuint shadow_fs = glCreateShader(GL_FRAGMENT_SHADER);
+	char** vertexShaderSourceDepth = loadShaderSource("depth_vs.glsl");
+	char** fragmentShaderSourceDepth = loadShaderSource("depth_fs.glsl");
+	glShaderSource(shadow_vs, 1, vertexShaderSourceDepth, 0);
+	glShaderSource(shadow_fs, 1, fragmentShaderSourceDepth, 0);
+	freeShaderSource(vertexShaderSourceDepth);
+	freeShaderSource(fragmentShaderSourceDepth);
+	glCompileShader(shadow_vs);
+	glCompileShader(shadow_fs);
+	shaderLog(shadow_vs);
+	shaderLog(shadow_fs);
+	depthProg = glCreateProgram();
+	glAttachShader(depthProg, shadow_vs);
+	glAttachShader(depthProg, shadow_fs);
+	glLinkProgram(depthProg);
+	uniforms.light.mvp = glGetUniformLocation(depthProg, "mvp");
+	// ----- End Initialize Depth Shader Program -----
+
+	// ----- Begin Initialize Blinn-Phong Shader Program -----
+	blinnPhongProg = glCreateProgram();
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	char** vertexShaderSource = loadShaderSource("vertex.vs.glsl");
@@ -192,9 +257,62 @@ void My_Init()
 	glCompileShader(fragmentShader);
 	shaderLog(vertexShader);
 	shaderLog(fragmentShader);
-	glAttachShader(program, vertexShader);
-	glAttachShader(program, fragmentShader);
+	glAttachShader(blinnPhongProg, vertexShader);
+	glAttachShader(blinnPhongProg, fragmentShader);
+	glLinkProgram(blinnPhongProg);
+	glUseProgram(blinnPhongProg);
+	uniforms.view.proj_matrix_location = glGetUniformLocation(blinnPhongProg, "proj_matrix");
+	uniforms.view.mv_matrix_location = glGetUniformLocation(blinnPhongProg, "mv_matrix");
+	uniforms.view.shadow_matrix_location = glGetUniformLocation(blinnPhongProg, "shadow_matrix");
+	uniforms.view.shadow_tex_location = glGetUniformLocation(blinnPhongProg, "shadow_tex");
+	light_pos_location = glGetUniformLocation(blinnPhongProg, "light_pos");
+	
+	// ----- End Initialize Blinn-Phong Shader Program -----
+
+	// ----- Begin Initialize normal Shader Program -----
+	program = glCreateProgram();
+	GLuint normal_vs = glCreateShader(GL_VERTEX_SHADER);
+	GLuint normal_fs = glCreateShader(GL_FRAGMENT_SHADER);
+	char** vertexShaderSourceNormal = loadShaderSource("vertex.vs.origin.glsl");
+	char** fragmentShaderSourceNormal = loadShaderSource("fragment.fs.origin.glsl");
+	glShaderSource(normal_vs, 1, vertexShaderSourceNormal, NULL);
+	glShaderSource(normal_fs, 1, fragmentShaderSourceNormal, NULL);
+	freeShaderSource(vertexShaderSourceNormal);
+	freeShaderSource(fragmentShaderSourceNormal);
+	glCompileShader(normal_vs);
+	glCompileShader(normal_fs);
+	shaderLog(normal_vs);
+	shaderLog(normal_fs);
+	glAttachShader(program, normal_vs);
+	glAttachShader(program, normal_fs);
 	glLinkProgram(program);
+	glUseProgram(program);
+	mv_matrix_normal_location = glGetUniformLocation(program, "um4mv");
+	proj_matrix_normal_location = glGetUniformLocation(program, "um4p");
+	// ----- End Initialize normal Shader Program 
+
+	// ----- Begin Initialize Partical System Shader Program -----
+	particleProg = glCreateProgram();
+	GLuint particle_vs = glCreateShader(GL_VERTEX_SHADER);
+	GLuint particle_fs = glCreateShader(GL_FRAGMENT_SHADER);
+	char** vertexShaderSourceParticle = loadShaderSource("particlesystem_vs.glsl");
+	char** fragmentShaderSourceParticle = loadShaderSource("particlesystem_fs.glsl");
+	glShaderSource(particle_vs, 1, vertexShaderSourceParticle, NULL);
+	glShaderSource(particle_fs, 1, fragmentShaderSourceParticle, NULL);
+	freeShaderSource(vertexShaderSourceParticle);
+	freeShaderSource(fragmentShaderSourceParticle);
+	glCompileShader(particle_vs);
+	glCompileShader(particle_fs);
+	shaderLog(particle_vs);
+	shaderLog(particle_fs);
+	glAttachShader(particleProg, particle_vs);
+	glAttachShader(particleProg, particle_fs);
+	glLinkProgram(particleProg);
+	glUseProgram(particleProg);
+	mv_matrix_particle_location = glGetUniformLocation(particleProg, "um4mv");
+	proj_matrix_particle_location = glGetUniformLocation(particleProg, "um4p");
+	// ----- End Initialize Partical System Shader Program -----
+
 	materials = new Material*[8];
 	shapes = new Shape*[8];
 	for (int s = 0; s < 9; s++) {
@@ -309,13 +427,10 @@ void My_Init()
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
 		//aiReleaseImport(scene);
-		mv_location = glGetUniformLocation(program, "um4mv");
-
-		proj_location = glGetUniformLocation(program, "um4p");
 		glm::mat4 Identy_Init(1.0);
 		ch_matrix = Identy_Init;
 		if (s > 0 & s < 8)
-			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(-25.0f + 10 * s, 4.0f, 0.0f));
+			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(80.0f + 10 * s, 4.0f, 0.0f));
 	}
 
 	//for point sprite
@@ -367,49 +482,119 @@ void My_Init()
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
+	// ----- Begin Initialize Shadow Framebuffer Object -----
+	glGenFramebuffers(1, &shadowBuffer.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.fbo);
+
+	glGenTextures(1, &shadowBuffer.depthMap);
+	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	// ----- End Initialize Shadow Framebuffer Object -----
 }
 
 void My_Display()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glUseProgram(program);
-	glm::mat4 Identy_Init(1.0);
-	mat4 m = Identy_Init;
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
-	float currentTime = f_timer_cnt* 0.001f;
-	currentTime *= 0.1f;
-	currentTime -= floor(currentTime);
-	GLuint tex_location = glGetUniformLocation(program, "tex");
-	GLint time_Loc = glGetUniformLocation(program, "time");
-	GLint type_Loc = glGetUniformLocation(program, "type");
-	GLint light_pos_location = glGetUniformLocation(program, "light_pos");
-	glUniform1f(time_Loc, currentTime);
-	glUniform1i(tex_location, 0);
-
-	//background
-	glUniform1i(type_Loc, 0);
+	light_pos = vec3(3000 * cos(f_timer_cnt* 0.0001f), 3000 * sin(f_timer_cnt* 0.0001f), 0.0);
 	view = lookAt(eye, eye + direction, up);
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view));
-	glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
-	glActiveTexture(GL_TEXTURE0);
+	mat4 scale_bias_matrix = mat4(
+		vec4(0.5f, 0.0f, 0.0f, 0.0f),
+		vec4(0.0f, 0.5f, 0.0f, 0.0f),
+		vec4(0.0f, 0.0f, 0.5f, 0.0f),
+		vec4(0.5f, 0.5f, 0.5f, 1.0f)
+	);
+
+	// ----- Begin Shadow Map Pass -----
+	mat4 light_proj_matrix = frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10000.0f);
+	mat4 light_view_matrix = lookAt(light_pos, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
+
+	mat4 shadow_sbpv_matrix = scale_bias_matrix * light_vp_matrix;
+
+	glUseProgram(depthProg);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.fbo);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(4.0f, 4.0f);
+
+	// ----  Background Shadow Map ----
+	glUniformMatrix4fv(uniforms.light.mvp, 1, GL_FALSE, value_ptr(light_vp_matrix));
 	const aiScene *scene;
 	scene = scene0;
 	for (int l = 0; l< int(scene->mNumMeshes); ++l)
 	{
 		glBindVertexArray(shapes[0][l].vao);
+		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
+	}
+	// ---- Pokemon Shadow Map ----
+	int s = pokemon;
+	glUniformMatrix4fv(uniforms.light.mvp, 1, GL_FALSE, value_ptr(light_vp_matrix*mv_matrix[s]));
+	if (s == 1)
+		scene = scene1;
+	else if (s == 2)
+		scene = scene2;
+	else if (s == 3)
+		scene = scene3;
+	else if (s == 4)
+		scene = scene4;
+	else if (s == 5)
+		scene = scene5;
+	else if (s == 6)
+		scene = scene6;
+	else if (s == 7)
+		scene = scene7;
+	for (int l = 0; l< int(scene->mNumMeshes); ++l)
+	{
+		glBindVertexArray(shapes[s][l].vao);
+		glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
+	}
+	glDisable(GL_POLYGON_OFFSET_FILL);
+	// ----- End Shadow Map Pass -----
+
+	// ----- Begin Blinn-Phong Shading Pass -----	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, viewportSize.width, viewportSize.height);
+	glUseProgram(blinnPhongProg);
+
+	//GLint light_pos_location = glGetUniformLocation(blinnPhongProg, "light_pos");
+	glUniform3fv(light_pos_location, 1, value_ptr(light_pos));
+
+	glUniformMatrix4fv(uniforms.view.proj_matrix_location, 1, GL_FALSE, value_ptr(proj_matrix));
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
+	glUniform1i(uniforms.view.shadow_tex_location, 0);
+	
+	mat4 shadow_matrix = shadow_sbpv_matrix;	
+	
+	// ----  Background Blinn-Phong ----
+	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view));
+	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
+
+	scene = scene0;
+	for (int l = 0; l< int(scene->mNumMeshes); ++l)
+	{
+		glBindVertexArray(shapes[0][l].vao);
 		int materialID = shapes[0][l].materialID;
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, materials[0][materialID].diffuse_tex);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[0][l].ibo);
 		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
-
-	//pokemon	
-	int s = pokemon;
-	glUniform1i(type_Loc, 0);
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
-	glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
-	glActiveTexture(GL_TEXTURE0);
-	//glBlendFunc(GL_ONE, GL_ZERO);////////////////////////////
+	// ----  Pokemon Blinn-Phong ----
+	s = pokemon;
+	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
+	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
 	if (s == 1)
 		scene = scene1;
 	else if (s == 2)
@@ -428,55 +613,69 @@ void My_Display()
 	{
 		glBindVertexArray(shapes[s][l].vao);
 		int materialID = shapes[s][l].materialID;
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, materials[s][materialID].diffuse_tex);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[s][l].ibo);
 		glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 
-	//sun
-	light_pos = vec3(1400 * cos(f_timer_cnt* 0.0001f), 1400 * sin(f_timer_cnt* 0.0001f), 0.0);
-	glUniform1i(type_Loc, 0);
-	glUniform3fv(light_pos_location, 1, value_ptr(light_pos));	
+
+	// ----- End Blinn-Phong Shading Pass -----
+	
+	// ---- Begin Draw Sun ----
+	glUseProgram(program);
+	glUniform3fv(light_pos_location, 1, value_ptr(light_pos));
 	sun_mv_matrix = glm::translate(mat4(1.0f), light_pos);
-	sun_mv_matrix = glm::scale(sun_mv_matrix, glm::vec3(50.0f));
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*sun_mv_matrix));
-	glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
+	sun_mv_matrix = glm::scale(sun_mv_matrix, glm::vec3(100.0f));
+	glUniformMatrix4fv(mv_matrix_normal_location, 1, GL_FALSE, value_ptr(view*sun_mv_matrix));
+	glUniformMatrix4fv(proj_matrix_normal_location, 1, GL_FALSE, value_ptr(proj_matrix));
 	//glActiveTexture(GL_TEXTURE0);	
 	scene = scene8;
 	for (int l = 0; l< int(scene->mNumMeshes); ++l)
 	{
 		glBindVertexArray(shapes[8][l].vao);
-		int materialID = shapes[8][l].materialID;
-		glBindTexture(GL_TEXTURE_2D, materials[s][materialID].diffuse_tex);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[8][l].ibo);
+		//int materialID = shapes[8][l].materialID;
+		//glBindTexture(GL_TEXTURE_2D, materials[8][materialID].diffuse_tex);
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[8][l].ibo);
 		glDrawElements(GL_TRIANGLES, shapes[8][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
+	// ---- End Draw Sun ----
 
+	// ---- Begin Graw Particle ----
+	glUseProgram(particleProg);
+	
+	float currentTime = f_timer_cnt* 0.001f;
+	currentTime *= 0.1f;
+	currentTime -= floor(currentTime);
+	GLuint tex_location = glGetUniformLocation(particleProg, "tex");
+	GLint time_Loc = glGetUniformLocation(particleProg, "time");
+	glUniform1f(time_Loc, currentTime);
+	glUniform1i(tex_location, 0);
 
 	//for point sprite
-	glUniform1i(type_Loc, 1);
 	glm::mat4 mv_sprite = glm::translate(mv_matrix[s], glm::vec3(0, 0, 50.0f));
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, value_ptr(view*mv_sprite));
-	glUniformMatrix4fv(proj_location, 1, GL_FALSE, value_ptr(proj_matrix));
+	glUniformMatrix4fv(mv_matrix_particle_location, 1, GL_FALSE, value_ptr(view*mv_sprite));
+	glUniformMatrix4fv(proj_matrix_particle_location, 1, GL_FALSE, value_ptr(proj_matrix));
 	glEnable(GL_BLEND);
-	//glBlendFunc(GL_ONE, GL_ONE);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_texture[s - 1]);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glDrawArrays(GL_POINTS, 0, NUM_FLAME);
 	glutPostRedisplay();
-
+	// ---- End Graw Particle ----
+	
 	glutSwapBuffers();
-	ch_matrix = Identy_Init;
 }
 
 void My_Reshape(int width, int height)
 {
+	viewportSize.width = width;
+	viewportSize.height = height;
 	glViewport(0, 0, width, height);
 	float viewportAspect = (float)width / (float)height;
 	proj_matrix = perspective(radians(60.0f), viewportAspect, 0.1f, 10000.0f);
 	//initial position
-	eye = vec3(15.0f, 32.0f, 75.0f);
+	eye = vec3(95.0f, 40.0f, 75.0f);
 	direction = vec3(0.0f, 0.0f, -5.0f);
 	center = eye + direction;
 	up = vec3(0.0f, 1.0f, 0.0f);
