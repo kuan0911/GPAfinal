@@ -519,8 +519,13 @@ void My_Display()
 	);
 
 	// ----- Begin Shadow Map Pass -----
+	vec3 light_pos_final = light_pos;
+	if (light_pos.y < 0) {
+		light_pos_final.y = -light_pos.y;
+		light_pos_final.x = -light_pos.x;
+	}
 	mat4 light_proj_matrix = frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10000.0f);
-	mat4 light_view_matrix = lookAt(light_pos, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 light_view_matrix = lookAt(light_pos_final, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
 
 	mat4 shadow_sbpv_matrix = scale_bias_matrix * light_vp_matrix;
@@ -582,9 +587,9 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
 	glUniform1i(uniforms.view.shadow_tex_location, 0);
 	
-	mat4 shadow_matrix = shadow_sbpv_matrix;	
-	
 	// ----  Background Blinn-Phong ----
+	mat4 shadow_matrix = shadow_sbpv_matrix;		
+	
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view));
 	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
 
@@ -599,6 +604,7 @@ void My_Display()
 		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 	// ----  Pokemon Blinn-Phong ----
+	shadow_matrix = shadow_sbpv_matrix*mv_matrix[s];
 	s = pokemon;
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
 	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
