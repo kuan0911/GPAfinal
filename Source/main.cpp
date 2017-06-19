@@ -33,6 +33,9 @@ float startY = 0;
 GLint program;
 GLint blinnPhongProg;
 GLint depthProg;
+GLuint skybox_prog;
+GLuint tex_envmap;
+GLuint skybox_vao;
 GLint particleProg;
 GLint mv_location;
 GLint proj_location;
@@ -59,7 +62,13 @@ struct
 		GLint   full_shading_location;
 		GLint   light_matrix_location;
 	} view;
+	struct
+	{
+		GLint inv_vp_matrix;
+		GLint eye;
+	} skybox;
 } uniforms;
+
 GLint   mv_matrix_normal_location;
 GLint   proj_matrix_normal_location;
 GLint   mv_matrix_particle_location;
@@ -90,6 +99,7 @@ vec3 eye;
 vec3 center;
 vec3 up;
 vec3 direction;
+
 // start the sound engine with default parameters
 irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 
@@ -218,9 +228,9 @@ TextureData loadPNG(const char* const pngFilepath)
 
 void My_Init()
 {
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-	glClearColor(0.5, 0.5, 0.5, 1.0);
+	//glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_LEQUAL);
+	//glClearColor(0.5, 0.5, 0.5, 1.0);
 
 	// ----- Begin Initialize Depth Shader Program -----
 	depthProg = glCreateProgram();
@@ -497,19 +507,77 @@ void My_Init()
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depthMap, 0);
 	glDrawBuffer(GL_NONE);
 	// ----- End Initialize Shadow Framebuffer Object -----
+
+
+	// ----- Begin Initialize skybox Shader Program -----
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+
+	skybox_prog = glCreateProgram();
+	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+	char** vertexShaderSourceSky = loadShaderSource("sky_vs.glsl");
+	char** fragmentShaderSourceSky = loadShaderSource("sky_fs.glsl");
+	glShaderSource(fs, 1, fragmentShaderSourceSky, NULL);
+	glCompileShader(fs);
+
+	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vs, 1, vertexShaderSourceSky, NULL);
+	glCompileShader(vs);
+
+	glAttachShader(skybox_prog, vs);
+	glAttachShader(skybox_prog, fs);
+
+	glLinkProgram(skybox_prog);
+	glUseProgram(skybox_prog);
+
+	uniforms.skybox.inv_vp_matrix = glGetUniformLocation(skybox_prog, "inv_vp_matrix");
+	uniforms.skybox.eye = glGetUniformLocation(skybox_prog, "eye");
+
+	TextureData envmap_data = loadPNG("mountaincube.png");
+	glGenTextures(1, &tex_envmap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, tex_envmap);
+	for (int i = 0; i < 6; ++i)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, envmap_data.width, envmap_data.height / 6, 0, GL_RGBA, GL_UNSIGNED_BYTE, envmap_data.data + i * (envmap_data.width * (envmap_data.height / 6) * sizeof(unsigned char) * 4));
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	delete[] envmap_data.data;
+
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+	glGenVertexArrays(1, &skybox_vao);
+	// ----- End Initialize skybox Shader Program -----
 }
 
 void My_Display()
 {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
 	light_pos = vec3(3000 * cos(f_timer_cnt* 0.0001f), 3000 * sin(f_timer_cnt* 0.0001f), 0.0);
 	view = lookAt(eye, eye + direction, up);
+	mat4 inv_vp_matrix = inverse(proj_matrix * view);
 	mat4 scale_bias_matrix = mat4(
 		vec4(0.5f, 0.0f, 0.0f, 0.0f),
 		vec4(0.0f, 0.5f, 0.0f, 0.0f),
 		vec4(0.0f, 0.0f, 0.5f, 0.0f),
 		vec4(0.5f, 0.5f, 0.5f, 1.0f)
 	);
+
+	// ---- Begin Draw Skybox ----
+	glUseProgram(skybox_prog);
+
+	glUniformMatrix4fv(uniforms.skybox.inv_vp_matrix, 1, GL_FALSE, &inv_vp_matrix[0][0]);
+	glUniform3fv(uniforms.skybox.eye, 1, &eye[0]);
+
+	glBindVertexArray(skybox_vao);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, tex_envmap);
+
+	glDisable(GL_DEPTH_TEST);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glEnable(GL_DEPTH_TEST);
+	// ---- End Draw Skybox --
+
 
 	// ----- Begin Shadow Map Pass -----
 	mat4 light_proj_matrix = frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10000.0f);
@@ -562,7 +630,7 @@ void My_Display()
 
 	// ----- Begin Blinn-Phong Shading Pass -----	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, viewportSize.width, viewportSize.height);
 	glUseProgram(blinnPhongProg);
 
@@ -591,6 +659,7 @@ void My_Display()
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[0][l].ibo);
 		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
+
 	// ----  Pokemon Blinn-Phong ----
 	s = pokemon;
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
@@ -621,7 +690,7 @@ void My_Display()
 
 
 	// ----- End Blinn-Phong Shading Pass -----
-	
+
 	// ---- Begin Draw Sun ----
 	glUseProgram(program);
 	glUniform3fv(light_pos_location, 1, value_ptr(light_pos));
