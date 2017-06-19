@@ -232,15 +232,10 @@ TextureData loadPNG(const char* const pngFilepath)
 
 void My_Init()
 {
-<<<<<<< HEAD
 	//glEnable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_LEQUAL);
-	//glClearColor(0.5, 0.5, 0.5, 1.0);
-=======
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-	glClearColor(1.0, 1.0, 1.0, 1.0);
->>>>>>> 93199e2cb9ee76c30c108394c81602e9cfcd045c
+	//glClearColor(1.0, 1.0, 1.0, 1.0);
+
 
 	// ----- Begin Initialize Depth Shader Program -----
 	depthProg = glCreateProgram();
@@ -562,9 +557,9 @@ void My_Init()
 
 void My_Display()
 {
-<<<<<<< HEAD
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-=======
+
 	
 	if (daytime_enable == true) {
 		daytime = daytime+0.001;
@@ -575,7 +570,7 @@ void My_Display()
 	}
 	bezier_curv(curve_t);
 
->>>>>>> 93199e2cb9ee76c30c108394c81602e9cfcd045c
+
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
 	light_pos = vec3(3000*cos(daytime), 3000 * sin(daytime), 1000.0);
 	view = lookAt(eye, eye + direction, up);
