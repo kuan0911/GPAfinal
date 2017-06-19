@@ -4,7 +4,7 @@ layout(binding = 0) uniform sampler2DShadow shadow_tex;
 layout(binding = 1) uniform sampler2D tex;
 out vec4 color;
 
-uniform int type;
+uniform vec3 light_pos;
 
 in VS_OUT
 {
@@ -37,5 +37,9 @@ void main(void)
     // Compute the diffuse and specular components for each fragment
     vec3 diffuse = max(dot(N, L), 0.0) * texcolor * Id;
     vec3 specular = pow(max(dot(N, H), 0.0), specular_power) * specular_albedo * Is;
-    color = textureProj(shadow_tex, fs_in.shadow_coord) * vec4(ambient + diffuse + specular, 1.0)*shadowrate + vec4(ambient + diffuse + specular, 1.0)*(1-shadowrate);
+	if(light_pos.y<0.0) {
+	    color = vec4(ambient, 1.0)*(1-shadowrate);
+	} else {
+        color = textureProj(shadow_tex, fs_in.shadow_coord) * vec4(ambient + diffuse + specular, 1.0)*shadowrate + vec4(ambient + diffuse + specular, 1.0)*(1-shadowrate);
+	}
 }

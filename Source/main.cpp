@@ -24,8 +24,10 @@ using namespace irrklang;
 #define NUM_FLAME 2000
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
+bool daytime_enable = true;
 static unsigned int seed = 0x13371337;
 unsigned int timer_speed = 16;
+float daytime;
 float angleX = 0;
 float startX = 0;
 float angleY = 0;
@@ -220,7 +222,7 @@ void My_Init()
 {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
-	glClearColor(0.5, 0.5, 0.5, 1.0);
+	glClearColor(1.0, 1.0, 1.0, 1.0);
 
 	// ----- Begin Initialize Depth Shader Program -----
 	depthProg = glCreateProgram();
@@ -501,8 +503,13 @@ void My_Init()
 
 void My_Display()
 {
+	
+	if (daytime_enable == true) {
+		daytime = daytime+0.001;
+	}
+	
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
-	light_pos = vec3(3000 * cos(f_timer_cnt* 0.0001f), 3000 * sin(f_timer_cnt* 0.0001f), 0.0);
+	light_pos = vec3(3000*cos(daytime), 3000 * sin(daytime), 1000.0);
 	view = lookAt(eye, eye + direction, up);
 	mat4 scale_bias_matrix = mat4(
 		vec4(0.5f, 0.0f, 0.0f, 0.0f),
@@ -560,7 +567,7 @@ void My_Display()
 	glDisable(GL_POLYGON_OFFSET_FILL);
 	// ----- End Shadow Map Pass -----
 
-	// ----- Begin Blinn-Phong Shading Pass -----	
+	// ----- Begin Blinn-Phong Shading Pass -----		
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, viewportSize.width, viewportSize.height);
@@ -661,9 +668,8 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, m_texture[s - 1]);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glDrawArrays(GL_POINTS, 0, NUM_FLAME);
-	glutPostRedisplay();
 	// ---- End Graw Particle ----
-	
+	glutPostRedisplay();	
 	glutSwapBuffers();
 }
 
@@ -684,7 +690,9 @@ void My_Reshape(int width, int height)
 void My_Timer(int val)
 {
 	glutPostRedisplay();
-	glutTimerFunc(timer_speed, My_Timer, val);
+	if (timer_enabled) {
+		glutTimerFunc(timer_speed, My_Timer, val);
+	}
 }
 
 void My_SpecialKeys(int key, int x, int y)
@@ -716,9 +724,11 @@ void My_Menu(int id)
 			timer_enabled = true;
 			glutTimerFunc(timer_speed, My_Timer, 0);
 		}
+		daytime_enable = true;
 		break;
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
+		daytime_enable = false;
 		break;
 	case MENU_EXIT:
 		exit(0);
@@ -787,6 +797,6 @@ int main(int argc, char *argv[])
 	// Enter main event loop.
 	glutMainLoop();
 
-	engine->drop(); // delete engine
+    engine->drop(); // delete engine
 	return 0;
 }
