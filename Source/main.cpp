@@ -24,8 +24,12 @@ using namespace irrklang;
 #define NUM_FLAME 2000
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
+bool daytime_enable = true;
+bool curve_t_enable = true;
 static unsigned int seed = 0x13371337;
 unsigned int timer_speed = 16;
+float daytime = 0;
+float curve_t = 0;
 float angleX = 0;
 float startX = 0;
 float angleY = 0;
@@ -228,9 +232,15 @@ TextureData loadPNG(const char* const pngFilepath)
 
 void My_Init()
 {
+<<<<<<< HEAD
 	//glEnable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_LEQUAL);
 	//glClearColor(0.5, 0.5, 0.5, 1.0);
+=======
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+>>>>>>> 93199e2cb9ee76c30c108394c81602e9cfcd045c
 
 	// ----- Begin Initialize Depth Shader Program -----
 	depthProg = glCreateProgram();
@@ -552,9 +562,22 @@ void My_Init()
 
 void My_Display()
 {
+<<<<<<< HEAD
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+=======
+	
+	if (daytime_enable == true) {
+		daytime = daytime+0.001;
+	}
+
+	if (curve_t_enable == true) {
+		curve_t = curve_t + 0.004;
+	}
+	bezier_curv(curve_t);
+
+>>>>>>> 93199e2cb9ee76c30c108394c81602e9cfcd045c
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
-	light_pos = vec3(3000 * cos(f_timer_cnt* 0.0001f), 3000 * sin(f_timer_cnt* 0.0001f), 0.0);
+	light_pos = vec3(3000*cos(daytime), 3000 * sin(daytime), 1000.0);
 	view = lookAt(eye, eye + direction, up);
 	mat4 inv_vp_matrix = inverse(proj_matrix * view);
 	mat4 scale_bias_matrix = mat4(
@@ -580,8 +603,13 @@ void My_Display()
 
 
 	// ----- Begin Shadow Map Pass -----
+	vec3 light_pos_final = light_pos;
+	if (light_pos.y < 0) {
+		light_pos_final.y = -light_pos.y;
+		light_pos_final.x = -light_pos.x;
+	}
 	mat4 light_proj_matrix = frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10000.0f);
-	mat4 light_view_matrix = lookAt(light_pos, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 light_view_matrix = lookAt(light_pos_final, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
 
 	mat4 shadow_sbpv_matrix = scale_bias_matrix * light_vp_matrix;
@@ -628,7 +656,7 @@ void My_Display()
 	glDisable(GL_POLYGON_OFFSET_FILL);
 	// ----- End Shadow Map Pass -----
 
-	// ----- Begin Blinn-Phong Shading Pass -----	
+	// ----- Begin Blinn-Phong Shading Pass -----		
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, viewportSize.width, viewportSize.height);
@@ -643,9 +671,9 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
 	glUniform1i(uniforms.view.shadow_tex_location, 0);
 	
-	mat4 shadow_matrix = shadow_sbpv_matrix;	
-	
 	// ----  Background Blinn-Phong ----
+	mat4 shadow_matrix = shadow_sbpv_matrix;		
+	
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view));
 	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
 
@@ -661,6 +689,7 @@ void My_Display()
 	}
 
 	// ----  Pokemon Blinn-Phong ----
+	shadow_matrix = shadow_sbpv_matrix*mv_matrix[s];
 	s = pokemon;
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
 	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
@@ -730,9 +759,8 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, m_texture[s - 1]);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glDrawArrays(GL_POINTS, 0, NUM_FLAME);
-	glutPostRedisplay();
 	// ---- End Graw Particle ----
-	
+	glutPostRedisplay();	
 	glutSwapBuffers();
 }
 
@@ -753,7 +781,9 @@ void My_Reshape(int width, int height)
 void My_Timer(int val)
 {
 	glutPostRedisplay();
-	glutTimerFunc(timer_speed, My_Timer, val);
+	if (timer_enabled) {
+		glutTimerFunc(timer_speed, My_Timer, val);
+	}
 }
 
 void My_SpecialKeys(int key, int x, int y)
@@ -785,9 +815,13 @@ void My_Menu(int id)
 			timer_enabled = true;
 			glutTimerFunc(timer_speed, My_Timer, 0);
 		}
+		daytime_enable = true;
+		curve_t_enable = true;
 		break;
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
+		daytime_enable = false;
+		curve_t_enable = false;
 		break;
 	case MENU_EXIT:
 		exit(0);
@@ -856,6 +890,6 @@ int main(int argc, char *argv[])
 	// Enter main event loop.
 	glutMainLoop();
 
-	engine->drop(); // delete engine
+    engine->drop(); // delete engine
 	return 0;
 }
