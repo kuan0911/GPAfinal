@@ -51,6 +51,7 @@ mat4 mv_matrix[8];
 mat4 sun_mv_matrix;
 vec3 light_pos;
 GLint light_pos_location;
+GLint light_pos_location_sky;
 
 struct
 {
@@ -557,6 +558,7 @@ void My_Init()
 
 	uniforms.skybox.inv_vp_matrix = glGetUniformLocation(skybox_prog, "inv_vp_matrix");
 	uniforms.skybox.eye = glGetUniformLocation(skybox_prog, "eye");
+	light_pos_location_sky = glGetUniformLocation(skybox_prog, "light_pos");
 
 	TextureData envmap_data = loadPNG("mountaincube.png");
 	glGenTextures(1, &tex_envmap);
@@ -589,7 +591,7 @@ void My_Display()
 		restart = false;
 	}
 	if (curve_t_enable == true) {
-		curve_t = curve_t + 0.004;
+		curve_t = curve_t + 0.005;
 	}
 	bezier_curv(curve_t);
 
@@ -609,6 +611,7 @@ void My_Display()
 
 	glUniformMatrix4fv(uniforms.skybox.inv_vp_matrix, 1, GL_FALSE, &inv_vp_matrix[0][0]);
 	glUniform3fv(uniforms.skybox.eye, 1, &eye[0]);
+	glUniform3fv(light_pos_location_sky, 1, value_ptr(light_pos));
 
 	glBindVertexArray(skybox_vao);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, tex_envmap);

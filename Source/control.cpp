@@ -5,6 +5,8 @@ using namespace std;
 using namespace irrklang;
 #pragma comment(lib, "irrKlang.lib") // link with irrKlang.dll
 
+bool iftour = true;
+
 typedef struct group
 {
 	vec3 p0;
@@ -61,6 +63,11 @@ void My_Keyboard(unsigned char key, int x, int y)
 	else if (key == 'f')
 	{
 		restart = true;
+	}
+	else if (key == 'g')
+	{
+		if (iftour == true) iftour = false;
+		else if (iftour == false) iftour = true;
 	}
 	else if (key == '1')
 	{
@@ -183,17 +190,18 @@ void bezier_curv(float t) {
 
 					 };
 	
-	
-	for (int i = 0; i < 13; i++) {
-		if (t < i + 1) {
-			eye = bezier_point(t - i, p[i].p0, p[i].p1, p[i].p2, p[i].p3);
-			vec3 camerapoint = bezier_point(t - i, c[i].p0, c[i].p1, c[i].p2, c[i].p3);
-			direction = camerapoint - eye;
-			//vec3 eye_next = bezier_point(t+0.0001 - i, p[i].p0, p[i].p1, p[i].p2, p[i].p3);
-			//direction = eye_next - eye;
-			break;
-		}		
-	}	
+	if (iftour) {
+		for (int i = 0; i < 13; i++) {
+			if (t < i + 1) {
+				eye = bezier_point(t - i, p[i].p0, p[i].p1, p[i].p2, p[i].p3);
+				vec3 camerapoint = bezier_point(t - i, c[i].p0, c[i].p1, c[i].p2, c[i].p3);
+				direction = camerapoint - eye;
+				//vec3 eye_next = bezier_point(t+0.0001 - i, p[i].p0, p[i].p1, p[i].p2, p[i].p3);
+				//direction = eye_next - eye;
+				break;
+			}
+		}
+	}
 }
 
 

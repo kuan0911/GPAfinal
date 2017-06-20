@@ -3,6 +3,7 @@
 layout(location = 0) out vec4 fragColor;
 
 uniform samplerCube tex_cubemap;
+uniform vec3 light_pos;
 
 in VS_OUT
 {                                              
@@ -12,5 +13,10 @@ in VS_OUT
 
 void main()
 {
-	fragColor = texture(tex_cubemap, fs_in.tc);
+    if(light_pos.y<0.0) {
+	    fragColor = texture(tex_cubemap, fs_in.tc)*0.3;
+	}else {
+	    fragColor = texture(tex_cubemap, fs_in.tc);
+	}
+	
 }
