@@ -9,6 +9,8 @@ extern vec3 eye;
 extern vec3 center;
 extern vec3 up;
 extern vec3 direction;
+extern bool curve_t_enable;
+extern bool restart;
 
 void My_Keyboard(unsigned char key, int x, int y);
 void My_Mouse(int button, int state, int x, int y);

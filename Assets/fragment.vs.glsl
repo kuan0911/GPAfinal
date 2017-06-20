@@ -50,7 +50,7 @@ void main(void)
     vec3 diffuse = max(dot(N, L), 0.0) * texcolor * Id;
     vec3 specular = pow(max(dot(N, H), 0.0), specular_power) * specular_albedo * Is;
 	if(light_pos.y<0.0) {
-	    color = textureProj(shadow_tex, fs_in.shadow_coord) * vec4(ambient + diffuse + specular, 1.0)*shadowrate*0.7 + vec4(ambient + diffuse + specular, 1.0)*(1-shadowrate)*0.4;
+	    color = textureProj(shadow_tex, fs_in.shadow_coord) * vec4(ambient + diffuse + specular, 1.0)*shadowrate*0.7 + vec4(ambient + diffuse + specular, 1.0)*(1-shadowrate)*0.6;
 	} else {
         color = textureProj(shadow_tex, fs_in.shadow_coord) * vec4(ambient + diffuse + specular, 1.0)*shadowrate + vec4(ambient + diffuse + specular, 1.0)*(1-shadowrate);
 	}

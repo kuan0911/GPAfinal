@@ -26,6 +26,7 @@ GLubyte timer_cnt = 0;
 bool timer_enabled = true;
 bool daytime_enable = true;
 bool curve_t_enable = true;
+bool restart;
 static unsigned int seed = 0x13371337;
 unsigned int timer_speed = 16;
 float daytime = 0;
@@ -444,8 +445,27 @@ void My_Init()
 		//aiReleaseImport(scene);
 		glm::mat4 Identy_Init(1.0);
 		ch_matrix = Identy_Init;
-		if (s > 0 & s < 8)
-			mv_matrix[s] = glm::translate(Identy_Init, glm::vec3(80.0f + 10 * s, 4.0f, 0.0f));
+		mv_matrix[1] = glm::translate(Identy_Init, glm::vec3(-2.0, 146.0, -75.0));
+		mv_matrix[1] = glm::scale(mv_matrix[1], glm::vec3(3.0f));
+		mv_matrix[1] = glm::rotate(mv_matrix[1], 0.0f, glm::vec3(0.0, 0.1, 0.0));
+		mv_matrix[2] = glm::translate(Identy_Init, glm::vec3(880.0, 5.0, 60.0));
+		mv_matrix[2] = glm::scale(mv_matrix[2], glm::vec3(6.0f));
+		mv_matrix[2] = glm::rotate(mv_matrix[2], -1.57f, glm::vec3(0.0, 0.1, 0.0));
+		mv_matrix[3] = glm::translate(Identy_Init, glm::vec3(1135.0, 5.0, -900.0));
+		mv_matrix[3] = glm::scale(mv_matrix[3], glm::vec3(3.0f));
+		mv_matrix[3] = glm::rotate(mv_matrix[3], 0.0f, glm::vec3(0.0, 0.1, 0.0));
+		mv_matrix[4] = glm::translate(Identy_Init, glm::vec3(210.0, 99.0, -1010.0));
+		mv_matrix[4] = glm::scale(mv_matrix[4], glm::vec3(3.0f));
+		mv_matrix[4] = glm::rotate(mv_matrix[4], 3.14f, glm::vec3(0.0, 0.1, 0.0));
+		mv_matrix[5] = glm::translate(Identy_Init, glm::vec3(-220.0, -25.0, -470.0));
+		mv_matrix[5] = glm::scale(mv_matrix[5], glm::vec3(5.0f));
+		mv_matrix[5] = glm::rotate(mv_matrix[5], 1.0f, glm::vec3(0.0, 0.1, 0.0));
+		mv_matrix[6] = glm::translate(Identy_Init, glm::vec3(-445.0, 5.0, 125.0));
+		mv_matrix[6] = glm::scale(mv_matrix[6], glm::vec3(3.0f));
+		mv_matrix[6] = glm::rotate(mv_matrix[6], 1.57f, glm::vec3(0.0, 0.1, 0.0));
+		mv_matrix[7] = glm::translate(Identy_Init, glm::vec3(-200.0, 5.0, 380.0));
+		mv_matrix[7] = glm::scale(mv_matrix[7], glm::vec3(4.0f));
+		mv_matrix[7] = glm::rotate(mv_matrix[7], 3.0f, glm::vec3(0.0, 0.1, 0.0));
 	}
 
 	//for point sprite
@@ -564,12 +584,14 @@ void My_Display()
 	if (daytime_enable == true) {
 		daytime = daytime+0.001;
 	}
-
+	if (restart == true) {
+		curve_t = 0;
+		restart = false;
+	}
 	if (curve_t_enable == true) {
 		curve_t = curve_t + 0.004;
 	}
 	bezier_curv(curve_t);
-
 
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
 	light_pos = vec3(3000*cos(daytime), 3000 * sin(daytime), 1000.0);
@@ -627,26 +649,27 @@ void My_Display()
 		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 	// ---- Pokemon Shadow Map ----
-	int s = pokemon;
-	glUniformMatrix4fv(uniforms.light.mvp, 1, GL_FALSE, value_ptr(light_vp_matrix*mv_matrix[s]));
-	if (s == 1)
-		scene = scene1;
-	else if (s == 2)
-		scene = scene2;
-	else if (s == 3)
-		scene = scene3;
-	else if (s == 4)
-		scene = scene4;
-	else if (s == 5)
-		scene = scene5;
-	else if (s == 6)
-		scene = scene6;
-	else if (s == 7)
-		scene = scene7;
-	for (int l = 0; l< int(scene->mNumMeshes); ++l)
-	{
-		glBindVertexArray(shapes[s][l].vao);
-		glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
+	for (int s = 1; s < 8; s++) {
+		glUniformMatrix4fv(uniforms.light.mvp, 1, GL_FALSE, value_ptr(light_vp_matrix*mv_matrix[s]));
+		if (s == 1)
+			scene = scene1;
+		else if (s == 2)
+			scene = scene2;
+		else if (s == 3)
+			scene = scene3;
+		else if (s == 4)
+			scene = scene4;
+		else if (s == 5)
+			scene = scene5;
+		else if (s == 6)
+			scene = scene6;
+		else if (s == 7)
+			scene = scene7;
+		for (int l = 0; l< int(scene->mNumMeshes); ++l)
+		{
+			glBindVertexArray(shapes[s][l].vao);
+			glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
+		}
 	}
 	glDisable(GL_POLYGON_OFFSET_FILL);
 	// ----- End Shadow Map Pass -----
@@ -684,34 +707,34 @@ void My_Display()
 	}
 
 	// ----  Pokemon Blinn-Phong ----
-	shadow_matrix = shadow_sbpv_matrix*mv_matrix[s];
-	s = pokemon;
-	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
-	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
-	if (s == 1)
-		scene = scene1;
-	else if (s == 2)
-		scene = scene2;
-	else if (s == 3)
-		scene = scene3;
-	else if (s == 4)
-		scene = scene4;
-	else if (s == 5)
-		scene = scene5;
-	else if (s == 6)
-		scene = scene6;
-	else if (s == 7)
-		scene = scene7;
-	for (int l = 0; l< int(scene->mNumMeshes); ++l)
-	{
-		glBindVertexArray(shapes[s][l].vao);
-		int materialID = shapes[s][l].materialID;
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, materials[s][materialID].diffuse_tex);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[s][l].ibo);
-		glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
+	for (int s = 1; s < 8; s++) {
+		shadow_matrix = shadow_sbpv_matrix*mv_matrix[s];
+		glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
+		glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
+		if (s == 1)
+			scene = scene1;
+		else if (s == 2)
+			scene = scene2;
+		else if (s == 3)
+			scene = scene3;
+		else if (s == 4)
+			scene = scene4;
+		else if (s == 5)
+			scene = scene5;
+		else if (s == 6)
+			scene = scene6;
+		else if (s == 7)
+			scene = scene7;
+		for (int l = 0; l< int(scene->mNumMeshes); ++l)
+		{
+			glBindVertexArray(shapes[s][l].vao);
+			int materialID = shapes[s][l].materialID;
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, materials[s][materialID].diffuse_tex);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shapes[s][l].ibo);
+			glDrawElements(GL_TRIANGLES, shapes[s][l].drawCount, GL_UNSIGNED_INT, 0);
+		}
 	}
-
 
 	// ----- End Blinn-Phong Shading Pass -----
 
@@ -746,17 +769,20 @@ void My_Display()
 	glUniform1i(tex_location, 0);
 
 	//for point sprite
-	glm::mat4 mv_sprite = glm::translate(mv_matrix[s], glm::vec3(0, 0, 50.0f));
-	glUniformMatrix4fv(mv_matrix_particle_location, 1, GL_FALSE, value_ptr(view*mv_sprite));
-	glUniformMatrix4fv(proj_matrix_particle_location, 1, GL_FALSE, value_ptr(proj_matrix));
-	glEnable(GL_BLEND);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_texture[s - 1]);
-	glEnable(GL_PROGRAM_POINT_SIZE);
-	glDrawArrays(GL_POINTS, 0, NUM_FLAME);
-	// ---- End Graw Particle ----
-	glutPostRedisplay();	
-	glutSwapBuffers();
+	for (int s = 1; s < 8; s++) {
+		
+		glm::mat4 mv_sprite = glm::translate(mv_matrix[s], glm::vec3(0, 2.0, 50.0f));
+		glUniformMatrix4fv(mv_matrix_particle_location, 1, GL_FALSE, value_ptr(view*mv_sprite));
+		glUniformMatrix4fv(proj_matrix_particle_location, 1, GL_FALSE, value_ptr(proj_matrix));
+		glEnable(GL_BLEND);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, m_texture[s - 1]);
+		glEnable(GL_PROGRAM_POINT_SIZE);
+		glDrawArrays(GL_POINTS, 0, NUM_FLAME);
+		// ---- End Graw Particle ----
+		glutPostRedisplay();
+		glutSwapBuffers();
+	}
 }
 
 void My_Reshape(int width, int height)
