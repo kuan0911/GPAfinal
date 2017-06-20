@@ -25,11 +25,9 @@ using namespace irrklang;
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
 bool daytime_enable = true;
-bool curve_t_enable = true;
 static unsigned int seed = 0x13371337;
 unsigned int timer_speed = 16;
-float daytime = 0;
-float curve_t = 0;
+float daytime;
 float angleX = 0;
 float startX = 0;
 float angleY = 0;
@@ -509,12 +507,7 @@ void My_Display()
 	if (daytime_enable == true) {
 		daytime = daytime+0.001;
 	}
-
-	if (curve_t_enable == true) {
-		curve_t = curve_t + 0.004;
-	}
-	bezier_curv(curve_t);
-
+	
 	float f_timer_cnt = glutGet(GLUT_ELAPSED_TIME);
 	light_pos = vec3(3000*cos(daytime), 3000 * sin(daytime), 1000.0);
 	view = lookAt(eye, eye + direction, up);
@@ -526,13 +519,8 @@ void My_Display()
 	);
 
 	// ----- Begin Shadow Map Pass -----
-	vec3 light_pos_final = light_pos;
-	if (light_pos.y < 0) {
-		light_pos_final.y = -light_pos.y;
-		light_pos_final.x = -light_pos.x;
-	}
 	mat4 light_proj_matrix = frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10000.0f);
-	mat4 light_view_matrix = lookAt(light_pos_final, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 light_view_matrix = lookAt(light_pos, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
 
 	mat4 shadow_sbpv_matrix = scale_bias_matrix * light_vp_matrix;
@@ -594,9 +582,9 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
 	glUniform1i(uniforms.view.shadow_tex_location, 0);
 	
-	// ----  Background Blinn-Phong ----
-	mat4 shadow_matrix = shadow_sbpv_matrix;		
+	mat4 shadow_matrix = shadow_sbpv_matrix;	
 	
+	// ----  Background Blinn-Phong ----
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view));
 	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
 
@@ -611,7 +599,6 @@ void My_Display()
 		glDrawElements(GL_TRIANGLES, shapes[0][l].drawCount, GL_UNSIGNED_INT, 0);
 	}
 	// ----  Pokemon Blinn-Phong ----
-	shadow_matrix = shadow_sbpv_matrix*mv_matrix[s];
 	s = pokemon;
 	glUniformMatrix4fv(uniforms.view.mv_matrix_location, 1, GL_FALSE, value_ptr(view*mv_matrix[s]));
 	glUniformMatrix4fv(uniforms.view.shadow_matrix_location, 1, GL_FALSE, value_ptr(shadow_matrix));
@@ -738,12 +725,10 @@ void My_Menu(int id)
 			glutTimerFunc(timer_speed, My_Timer, 0);
 		}
 		daytime_enable = true;
-		curve_t_enable = true;
 		break;
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
 		daytime_enable = false;
-		curve_t_enable = false;
 		break;
 	case MENU_EXIT:
 		exit(0);

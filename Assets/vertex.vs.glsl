@@ -20,18 +20,13 @@ out VS_OUT
 } vs_out;
 
 void main(void)
-{	
-	vec3 light_pos_final = light_pos;
-	if(light_pos.y<0) { //night
-	    light_pos_final.y = -light_pos.y;
-		light_pos_final.x = -light_pos.x;
-	}
+{
     // Calculate view-space coordinate
     vec4 P = mv_matrix * position;
     // Calculate normal in view-space
     vs_out.N = mat3(mv_matrix) * normal;
     // Calculate light vector
-    vs_out.L = light_pos_final - P.xyz;
+    vs_out.L = light_pos - P.xyz;
     // Calculate view vector
     vs_out.V = -P.xyz;
     // Light-space coordinates

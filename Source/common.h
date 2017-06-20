@@ -13,5 +13,4 @@ extern vec3 direction;
 void My_Keyboard(unsigned char key, int x, int y);
 void My_Mouse(int button, int state, int x, int y);
 void MotionMouse(int x, int y);
-void bezier_curv(float t);
 

@@ -4,21 +4,12 @@ using namespace glm;
 using namespace std;
 using namespace irrklang;
 #pragma comment(lib, "irrKlang.lib") // link with irrKlang.dll
-
-typedef struct group
-{
-	vec3 p0;
-	vec3 p1;
-	vec3 p2;
-	vec3 p3;
-}Group;
-
 void My_Keyboard(unsigned char key, int x, int y)
 {
 	// start the sound engine with default parameters
 	irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 
-	//printf("Key %c is pressed at (%d, %d)\n", key, x, y);
+	printf("Key %c is pressed at (%d, %d)\n", key, x, y);
 	if (key == 'd')
 	{
 		eye = eye + normalize(cross(direction, up));
@@ -48,10 +39,6 @@ void My_Keyboard(unsigned char key, int x, int y)
 		eye = vec3(0.0f, 200.0f, 0.0f);
 		direction = vec3(-5.0f, 0.0f, 0.0f);
 		up = vec3(0.0f, 1.0f, 0.0f);
-	}
-	else if (key == 'p')
-	{
-		printf("position: (%f, %f, %f)\n", eye.x, eye.y, eye.z);
 	}
 	else if (key == '1')
 	{
@@ -121,55 +108,3 @@ void MotionMouse(int x, int y)
 	xpre = x;
 	ypre = y;
 }
-
-float bezier_coordinate(float t, float n0, float n1, float n2, float n3) {
-	float ans = n0*pow((1 - t), 3) + 3 * n1*t*pow((1 - t), 2) + 3 * n2*pow(t, 2) * (1 - t) + n3 * pow(t, 3);
-	return ans;
-}
-
-vec3 bezier_point(float t, vec3 p0, vec3 p1, vec3 p2, vec3 p3) {
-	float x = bezier_coordinate(t, p0.x, p1.x, p2.x, p3.x);
-	float y = bezier_coordinate(t, p0.y, p1.y, p2.y, p3.y);
-	float z = bezier_coordinate(t, p0.z, p1.z, p2.z, p3.z);
-	vec3 point = vec3(x, y, z);
-	return point;
-}
-
-void bezier_curv(float t) {
-	Group p[9] = { { vec3(96.0, 40.0, 109.0),vec3(96.0, 40.0, 100.0),vec3(94.0, 40.0, -100.0),vec3(94.0, 40.0, -107.0) },
-	               { vec3(94.0, 40.0, -107.0),vec3(94.0, 40.0, -150.0),vec3(250.0, 100.0, -215.0),vec3(274.0, 100.0, -215.0) },
-				   { vec3(274.0, 100.0, -215.0),vec3(280.0, 100.0, -215.0),vec3(516.0, 190.0, -180.0),vec3(516.0, 200.0, -180.0) },
-				   { vec3(516.0, 200.0, -180.0),vec3(516.0, 300.0, -190.0),vec3(670.0, 374.0, -160.0),vec3(670.0, 374.0, -141.0) },
-				   { vec3(670.0, 374.0, -141.0),vec3(670.0, 374.0, -120.0),vec3(850.0, 254.0, 120.0),vec3(887.0, 254.0, 101.0) },
-				   { vec3(887.0, 254.0, 101.0),vec3(930.0, 254.0, 101.0),vec3(1135.0, 20.0, -780.0),vec3(1132.0, 20.0, -792.0) },
-				   { vec3(1132.0, 20.0, -792.0),vec3(1112.0, 120.0, -780.0),vec3(300.0, 240.0, -580.0),vec3(289.0, 240.0, -568.0) },
-				   { vec3(289.0, 240.0, -568.0),vec3(280.0, 240.0, -576.0),vec3(-397.0, 32.0, 60.0), vec3(-397.0, 32.0, 50.0) },
-				   { vec3(-397.0, 32.0, 50.0),vec3(-1397.0, 32.0, -150.0),vec3(-1417.0, 300.0, -380.0), vec3(-917.0, 300.0, -480.0) } };
-
-	Group c[9] = { { vec3(96.0, 40.0, 100.0),vec3(96.0, 40.0, 90.0),vec3(94.0, 40.0, -100.0),vec3(94.0, 40.0, -110.0) },
-					{ vec3(94.0, 40.0, -110.0),vec3(94.0, 40.0, -150.0),vec3(290.0, 100.0, -240.0),vec3(300.0, 100.0, -215.0) },
-					{ vec3(300.0, 100.0, -215.0),vec3(408.0, 150.0, -187.0),vec3(408.0, 150.0, -187.0),vec3(516.0, 200.0, -160.0) },
-					{ vec3(516.0, 200.0, -160.0),vec3(516.0, 300.0, -160.0),vec3(670.0, 360.0, -141.0),vec3(670.0, 374.0, -141.0) },
-					{ vec3(670.0, 374.0, -141.0),vec3(900.0, 254.0, 90.0),vec3(850.0, 254.0, 80.0),vec3(900.0, 254.0, 90.0) },
-					{ vec3(887.0, 254.0, 101.0),vec3(1575.0, 254.0, -345.0),vec3(1575.0, 20.0, -345.0),vec3(1150.0, 20.0, -792.0) },
-					{ vec3(1150.0, 20.0, -792.0),vec3(1150.0, 20.0, -780.0),vec3(289.0, 240.0, -550.0),vec3(289.0, 240.0, -580.0) },
-					{ vec3(289.0, 240.0, -580.0),vec3(289.0, 240.0, -580.0),vec3(-360.0, 32.0, 60.0), vec3(-410.0, 32.0, 60.0) },
-					{ vec3(-410.0, 32.0, 60.0),vec3(-2010.0, 32.0, 60.0),vec3(-1417.0, 300.0, -300.0), vec3(-817.0, 300.0, -400.0) } };
-	
-	
-	for (int i = 0; i < 9; i++) {
-		if (t < i + 1) {
-			eye = bezier_point(t - i, p[i].p0, p[i].p1, p[i].p2, p[i].p3);
-			//vec3 camerapoint = bezier_point(t - i, c[i].p0, c[i].p1, c[i].p2, c[i].p3);
-			//direction = camerapoint - eye;
-			vec3 eye_next = bezier_point(t+0.0001 - i, p[i].p0, p[i].p1, p[i].p2, p[i].p3);
-			direction = eye_next - eye;
-			break;
-		}		
-	}
-
-	
-	
-}
-
-
